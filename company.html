@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Profile - MAKSA</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+<header>
+    <a href="index.html" class="logo">MAKSA Technology Validation Map</a>
+    <a href="search.html" style="margin-left: auto; margin-right: 20px; color: var(--primary); text-decoration: none; font-weight: 600;">Directory</a>
+    <a href="https://avareit.com/" class="cta-btn">Try Semen Analysis with MAKSA</a>
+</header>
+
+<div class="container">
+    <a href="search.html" style="color: #64748b; text-decoration: none; margin-bottom: 20px; display: block;">&larr; Back to Directory</a>
+    
+    <div class="grid">
+        <div id="info-container">
+            </div>
+
+        <div>
+            <div id="mini-map"></div>
+        </div>
+    </div>
+</div>
+
+<div class="developer-tag">Developed by <a href="https://avareit.com" target="_blank">avareit.com</a></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script>
+    // Get ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const companyId = urlParams.get('id');
+    const company = companies.find(c => c.id === companyId);
+
+    if (!company) {
+        document.body.innerHTML = "<div class='container'><h2>Company not found.</h2></div>";
+    } else {
+        // Render Info
+        const container = document.getElementById('info-container');
+        
+        // Helper for services tags
+        const servicesHtml = company.services.map(s => `<span class="service-pill">${s}</span>`).join('');
+        
+        // Helper for type tag
+        let typeLabel = "Partner";
+        if(company.type === 'validated') typeLabel = "Validated Case Study";
+        if(company.type === 'testing') typeLabel = "Open for Test";
+        
+        container.innerHTML = `
+            <div class="profile-header">
+                <img src="${company.image}" class="profile-img" alt="${company.name}">
+                <div>
+                    <h1 style="font-size: 2rem; line-height: 1;">${company.name}</h1>
+                    <span class="tag ${company.type}">${typeLabel}</span>
+                    <p style="color: #64748b; margin-top: 5px;">${company.shortTitle}</p>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <label>Description</label>
+                <p>${company.description}</p>
+            </div>
+
+            <div class="detail-row">
+                <label>Animal Types</label>
+                <p>${company.animalTypes.join(", ")}</p>
+            </div>
+
+            <div class="detail-row">
+                <label>Services</label>
+                <div class="services-list">${servicesHtml}</div>
+            </div>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+            <div class="detail-row">
+                <label>Contact</label>
+                <p>📍 ${company.address}</p>
+                <p>📞 ${company.phone}</p>
+                <p>✉️ <a href="mailto:${company.email}">${company.email}</a></p>
+                <p>🌐 <a href="${company.website}" target="_blank">${company.website}</a></p>
+            </div>
+        `;
+
+        // Render Map
+        const miniMap = L.map('mini-map').setView([company.lat, company.lng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+        L.marker([company.lat, company.lng]).addTo(miniMap)
+            .bindPopup(company.name)
+            .openPopup();
+    }
+</script>
+
+</body>
+</html>

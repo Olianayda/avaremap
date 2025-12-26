@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directory - MAKSA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <a href="index.html" class="logo">MAKSA Technology Validation Map</a>
+    <a href="https://avareit.com/" class="cta-btn">Try Semen Analysis with MAKSA</a>
+</header>
+
+<div class="container">
+    <h2>Directory</h2>
+    
+    <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by name, description, services...">
+        
+        <select id="countryFilter" class="filter-select">
+            <option value="">All Locations</option>
+            </select>
+        
+        <select id="animalFilter" class="filter-select">
+            <option value="">All Animals</option>
+            </select>
+    </div>
+
+    <div id="resultsGrid" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+        </div>
+</div>
+
+<div class="developer-tag">Developed by <a href="https://avareit.com" target="_blank">avareit.com</a></div>
+
+<script src="data.js"></script>
+<script>
+    const grid = document.getElementById('resultsGrid');
+    const searchInput = document.getElementById('searchInput');
+    const countryFilter = document.getElementById('countryFilter');
+    const animalFilter = document.getElementById('animalFilter');
+
+    // Populate Filters
+    const countries = [...new Set(companies.map(c => c.country))].sort();
+    const animals = [...new Set(companies.flatMap(c => c.animalTypes))].sort();
+
+    countries.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.innerText = c;
+        countryFilter.appendChild(opt);
+    });
+
+    animals.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.innerText = a;
+        animalFilter.appendChild(opt);
+    });
+
+    // Render Function
+    function render(list) {
+        grid.innerHTML = '';
+        if(list.length === 0) {
+            grid.innerHTML = '<p>No results found.</p>';
+            return;
+        }
+        
+        list.forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'company-card';
+            card.onclick = () => window.location.href = `company.html?id=${c.id}`;
+            
+            // Tag Logic
+            let typeLabel = "Partner";
+            if(c.type === 'validated') typeLabel = "Validated Case Study";
+            if(c.type === 'testing') typeLabel = "Open for Test";
+
+            card.innerHTML = `
+                <div style="display:flex; justify-content: space-between; align-items:start;">
+                    <img src="${c.image}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
+                    <span class="tag ${c.type}">${typeLabel}</span>
+                </div>
+                <h3 style="margin-top:10px;">${c.name}</h3>
+                <p style="font-size:0.9rem; color:#64748b;">${c.shortTitle}</p>
+                <p style="font-size:0.85rem; margin-top:10px;">📍 ${c.country}</p>
+                <div style="margin-top:10px;">
+                    ${c.animalTypes.map(a => `<span style="font-size:0.75rem; background:#f1f5f9; padding:2px 6px; border-radius:4px; margin-right:4px;">${a}</span>`).join('')}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // Filter Logic
+    function filterData() {
+        const keyword = searchInput.value.toLowerCase();
+        const loc = countryFilter.value;
+        const animal = animalFilter.value;
+
+        const filtered = companies.filter(c => {
+            const matchesKeyword = (
+                c.name.toLowerCase().includes(keyword) || 
+                c.description.toLowerCase().includes(keyword) ||
+                c.services.join(' ').toLowerCase().includes(keyword)
+            );
+            const matchesLoc = loc ? c.country === loc : true;
+            const matchesAnimal = animal ? c.animalTypes.includes(animal) : true;
+
+            return matchesKeyword && matchesLoc && matchesAnimal;
+        });
+
+        render(filtered);
+    }
+
+    // Event Listeners
+    searchInput.addEventListener('input', filterData);
+    countryFilter.addEventListener('change', filterData);
+    animalFilter.addEventListener('change', filterData);
+
+    // Initial Render
+    render(companies);
+</script>
+
+</body>
+</html>
