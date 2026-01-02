@@ -7,15 +7,21 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Specific override for map tiles to look clean/greyscale */
         .leaflet-tile { filter: grayscale(100%) brightness(1.05); }
+        /* Style for the 'Become First' button */
+        .whatsapp-btn {
+            display: block; margin-top: 10px; padding: 8px 12px;
+            background: #25D366; color: white; text-decoration: none;
+            border-radius: 6px; font-weight: bold; text-align: center;
+        }
+        .whatsapp-btn:hover { background: #128C7E; }
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" class="logo">MAKSA Technology Validation Map</a>
-    <a href="search.html" style="margin-left: auto; margin-right: 20px; color: var(--primary); text-decoration: none; font-weight: 600;">Directory</a>
+    <a href="search.html" class="cta-btn" style="background: #334155; margin-left: auto; margin-right: 15px;">All Companies</a>
     <a href="https://avareit.com/" class="cta-btn">Try Semen Analysis with MAKSA</a>
 </header>
 
@@ -28,79 +34,101 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="data.js"></script>
 <script>
-    // Initialize Map
     const map = L.map('map-container', {
-        center: [20, 0],
-        zoom: 2,
-        minZoom: 2,
-        zoomControl: false,
-        attributionControl: false
+        center: [20, 0], zoom: 2, minZoom: 2, zoomControl: false, attributionControl: false
     });
 
-    // Light/Clean Tiles
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19
+        subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
 
-    // Fetch World GeoJSON (Countries)
+    // 1. Add Black Dots for all companies
+    companies.forEach(c => {
+        L.circleMarker([c.lat, c.lng], {
+            color: '#000000',      // Black border
+            fillColor: '#000000',  // Black fill
+            fillOpacity: 1,
+            radius: 4,             // Small dot size
+            weight: 1
+        }).addTo(map);
+    });
+
+    // 2. Fetch Countries and Apply Logic
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
         .then(res => res.json())
         .then(geoJson => {
             
-            L.geoJson(geoJson, {
-                style: {
-                    fillColor: '#334155',
-                    weight: 1,
-                    opacity: 1,
-                    color: 'white',
-                    fillOpacity: 0.1
+            const geoJsonLayer = L.geoJson(geoJson, {
+                style: (feature) => {
+                    // Check if this country has any companies
+                    const hasCompany = companies.some(c => c.country === feature.properties.name);
+                    return {
+                        fillColor: hasCompany ? '#FFD700' : '#334155', // Gold if active, Slate if empty
+                        weight: 1,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: hasCompany ? 0.5 : 0.1 // Gold is semi-transparent
+                    };
                 },
                 onEachFeature: (feature, layer) => {
                     const countryName = feature.properties.name;
-                    
-                    // Filter companies for this country
                     const countryCompanies = companies.filter(c => c.country === countryName);
                     
-                    // Interaction logic
+                    // Logic for "Empty" Countries
+                    if (countryCompanies.length === 0) {
+                        const waLink = "https://api.whatsapp.com/send/?phone=971506412775&text=Hello.+I%27m+interested+in+subscribing+to+the+software&type=phone_number&app_absent=0";
+                        
+                        layer.bindPopup(`
+                            <div style="text-align:center; padding:10px;">
+                                <b>${countryName}</b> has no partners yet.
+                                <a href="${waLink}" class="whatsapp-btn" target="_blank">Become first from ${countryName}</a>
+                            </div>
+                        `);
+                    } 
+                    // Logic for "Active" Countries (Gold)
+                    else {
+                        let listHtml = `<div class="country-tooltip"><h4>${countryName}</h4><ul class="tooltip-list">`;
+                        countryCompanies.forEach(comp => {
+                            listHtml += `
+                                <li class="tooltip-item" onclick="window.location.href='company.html?id=${comp.id}'">
+                                    <img src="${comp.image}" alt="${comp.name}">
+                                    <div class="tooltip-info"><b>${comp.name}</b><span>${comp.shortTitle}</span></div>
+                                </li>`;
+                        });
+                        listHtml += `</ul></div>`;
+                        layer.bindPopup(listHtml, { closeButton: false, offset: [0, -10] });
+                    }
+
+                    // Hover Effects
                     layer.on({
                         mouseover: (e) => {
                             const layer = e.target;
-                            layer.setStyle({ fillOpacity: 0.3, fillColor: '#2563eb' });
-
+                            // Only change color if it's an active (Gold) country
                             if (countryCompanies.length > 0) {
-                                let listHtml = `<div class="country-tooltip"><h4>${countryName}</h4><ul class="tooltip-list">`;
-                                countryCompanies.forEach(comp => {
-                                    listHtml += `
-                                        <li class="tooltip-item" onclick="window.location.href='company.html?id=${comp.id}'">
-                                            <img src="${comp.image}" alt="${comp.name}">
-                                            <div class="tooltip-info">
-                                                <b>${comp.name}</b>
-                                                <span>${comp.shortTitle}</span>
-                                            </div>
-                                        </li>
-                                    `;
-                                });
-                                listHtml += `</ul></div>`;
-                                
-                                layer.bindPopup(listHtml, { closeButton: false, offset: [0, -10] }).openPopup();
+                                layer.setStyle({ fillColor: '#B8860B', fillOpacity: 0.7 }); // Dark Gold
+                                layer.openPopup();
+                            } else {
+                                // For empty countries, just slight highlight
+                                layer.setStyle({ fillOpacity: 0.2 });
                             }
                         },
                         mouseout: (e) => {
                             geoJsonLayer.resetStyle(e.target);
+                            // Close popup only if it's the company list (keep WhatsApp popup clickable if clicked)
+                            if (countryCompanies.length > 0) {
+                                layer.closePopup();
+                            }
                         },
                         click: (e) => {
-                            // If companies exist, zoom to country, otherwise do nothing
-                            if (countryCompanies.length > 0) {
+                            if (countryCompanies.length === 0) {
+                                layer.openPopup(); // Open WhatsApp popup on click
+                            } else {
                                 map.fitBounds(e.target.getBounds());
                             }
                         }
                     });
                 }
             }).addTo(map);
-            
-            // Assign to variable for resetStyle access
-            const geoJsonLayer = arguments[0];
         });
 </script>
 
