@@ -35,16 +35,20 @@
 <script src="data.js"></script>
 <script>
     const map = L.map('map-container', {
-        center: [20, 0], zoom: 2, minZoom: 2, zoomControl: false, attributionControl: false
+        center: [35, -40], zoom: 3, minZoom: 2, zoomControl: false, attributionControl: false
     });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
 
-    // 1. Add Black Dots for all companies
+    // 1. Add Black Dots for all companies (Use a pane to ensure they are on top)
+    map.createPane('dots');
+    map.getPane('dots').style.zIndex = 650;
+
     companies.forEach(c => {
         L.circleMarker([c.lat, c.lng], {
+            pane: 'dots',
             color: '#000000',      // Black border
             fillColor: '#000000',  // Black fill
             fillOpacity: 1,
@@ -54,20 +58,22 @@
     });
 
     // 2. Fetch Countries and Apply Logic
+    let geoJsonLayer; // Defined outside so it can be used in mouseout
+
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
         .then(res => res.json())
         .then(geoJson => {
             
-            const geoJsonLayer = L.geoJson(geoJson, {
+            geoJsonLayer = L.geoJson(geoJson, {
                 style: (feature) => {
-                    // Check if this country has any companies
-                    const hasCompany = companies.some(c => c.country === feature.properties.name);
+                    const countryName = feature.properties.name;
+                    const hasCompany = companies.some(c => c.country === countryName);
                     return {
-                        fillColor: hasCompany ? '#FFD700' : '#334155', // Gold if active, Slate if empty
+                        fillColor: hasCompany ? '#FFD700' : '#334155', 
                         weight: 1,
                         opacity: 1,
                         color: 'white',
-                        fillOpacity: hasCompany ? 0.5 : 0.1 // Gold is semi-transparent
+                        fillOpacity: hasCompany ? 0.5 : 0.1 
                     };
                 },
                 onEachFeature: (feature, layer) => {
@@ -97,31 +103,28 @@
                         });
                         listHtml += `</ul></div>`;
                         layer.bindPopup(listHtml, { closeButton: false, offset: [0, -10] });
-                    }
+                    } // <--- THIS CLOSING BRACE WAS MISSING
 
                     // Hover Effects
                     layer.on({
                         mouseover: (e) => {
                             const layer = e.target;
-                            // Only change color if it's an active (Gold) country
                             if (countryCompanies.length > 0) {
                                 layer.setStyle({ fillColor: '#B8860B', fillOpacity: 0.7 }); // Dark Gold
                                 layer.openPopup();
                             } else {
-                                // For empty countries, just slight highlight
                                 layer.setStyle({ fillOpacity: 0.2 });
                             }
                         },
                         mouseout: (e) => {
                             geoJsonLayer.resetStyle(e.target);
-                            // Close popup only if it's the company list (keep WhatsApp popup clickable if clicked)
                             if (countryCompanies.length > 0) {
                                 layer.closePopup();
                             }
                         },
                         click: (e) => {
                             if (countryCompanies.length === 0) {
-                                layer.openPopup(); // Open WhatsApp popup on click
+                                layer.openPopup(); 
                             } else {
                                 map.fitBounds(e.target.getBounds());
                             }
